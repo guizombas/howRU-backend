@@ -1,4 +1,6 @@
 import express from "express"
+import bcrypt from 'bcrypt'
+
 import connection from './database/connection.js'
 
 //rotas
@@ -8,7 +10,6 @@ router.post('/register', async (req,res) =>{
 
     const name = req.body.name
     const email = req.body.email
-    const password = req.body.password
 
     const query = `
         INSERT INTO user( name, email, password)
@@ -16,6 +17,7 @@ router.post('/register', async (req,res) =>{
     `
     
     try {
+        const password = await bcrypt.hash( req.body.password, 10)
 
         const db = await connection()
         await db.run( query, [name,email,password] )
@@ -36,17 +38,25 @@ router.post( '/login', async (req,res) =>{
     const password = req.body.password
 
     const query = `
-        SELECT id FROM user
-        WHERE email = ? AND password = ?
+        SELECT id, password FROM user
+        WHERE email = ?
     `
 
     try {
         
         const db = await connection()
-        const result = await db.get( query, [email, password] )
-        result ? 
-        res.status(200).json({id: result.id}) :
-        res.status( 406 ).json({ err: "fail to login: email or password are wrong" })
+        const result = await db.get( query, [email] )
+
+        if (result){
+
+            if ( await bcrypt.compare( password, result.password ) )
+                res.status(200).json({id: result.id})
+            else
+                res.status( 406 ).json({ err: "password err" })
+
+        }
+        else
+            res.status( 404 ).json({ err: "email err" })
 
     } catch (err) {
         console.log(err);
@@ -154,6 +164,49 @@ router.get( '/allFriends/:id', async (req,res) =>{
         let results = await db.all( query, {':id':id} )
         res.status(200).json(results)
 
+    } catch (err) {
+        console.log(err);
+        res.status(500).json(err)
+    }
+
+})
+
+router.get( '/allChats/:id', async (req, res) =>{
+
+    const id = req.params.id
+
+    const query = `
+
+        SELECT u.id, u.name, m.texto, m.id_sender FROM message m, user u
+        WHERE (m.id_sender = :id OR m.id_receiver = :id)
+        AND (m.id_sender = u.id OR m.id_receiver = u.id)
+        AND u.id =
+        (
+        SELECT u.id FROM user u2, friend f
+        WHERE ((f.id_f1 = :id AND f.id_f2 = u.id) OR
+                (f.id_f2 = :id AND f.id_f1 = u.id))
+        )
+        GROUP BY (u.id)
+        HAVING m.send_time = MAX(m.send_time)
+        ORDER BY (send_time) DESC;
+
+    `
+
+    try {
+        const db = await connection()
+        const results = await db.all( query, {":id":id} )
+
+        res.status(200).json(
+            results.map( result =>{
+                return {
+                    name: result.name,
+                    lastMessage: result.texto,
+                    lastSender: result.id_sender === id ? "you" : "friend" ,
+                    friendID: result.id
+                }
+            })
+        )
+        
     } catch (err) {
         console.log(err);
         res.status(500).json(err)

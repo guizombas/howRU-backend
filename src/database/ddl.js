@@ -2,10 +2,10 @@ export default async function ddlComands( db ){
     await db.exec(`
         CREATE TABLE IF NOT EXISTS user(
             id INTEGER NOT NULL,
-            name VARCHAR(50) NOT NULL,
-            tel CHAR(12),
-            email VARCHAR(50) UNIQUE NOT NULL,
-            password VARCHAR(30),
+            name TEXT NOT NULL,
+            tel TEXT,
+            email TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
         
             CONSTRAINT PK_user PRIMARY KEY (id)
         );
@@ -20,10 +20,10 @@ export default async function ddlComands( db ){
         
         CREATE TABLE IF NOT EXISTS message(
             id INTEGER NOT NULL,
-            texto VARCHAR(255) NOT NULL,
+            texto TEXT NOT NULL,
             id_sender INTEGER NOT NULL,
             id_receiver INTEGER NOT NULL,
-            send_time CHAR(20),
+            send_time TEXT NOT NULL,
         
             CONSTRAINT PK_message PRIMARY KEY (id),
             CONSTRAINT FK_message FOREIGN KEY (id_sender,id_receiver) REFERENCES user (id,id) 
