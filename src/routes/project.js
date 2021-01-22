@@ -1,73 +1,13 @@
-import express from "express"
-import bcrypt from 'bcrypt'
+import express from 'express'
+import connection from '../database/connection.js'
+import authMidleware from '../middlewares/auth.js'
 
-import connection from './database/connection.js'
-
-//rotas
 const router = express.Router()
-
-router.post('/register', async (req,res) =>{
-
-    const name = req.body.name
-    const email = req.body.email
-
-    const query = `
-        INSERT INTO user( name, email, password)
-        VALUES ( ?, ?, ? );
-    `
-    
-    try {
-        const password = await bcrypt.hash( req.body.password, 10)
-
-        const db = await connection()
-        await db.run( query, [name,email,password] )
-        res.status(201).json({ "message": "registration completed" })
-
-    } catch (err) {
-        console.log(err);
-        //errno 19 do sqlite é o de violação de constraint
-        err.errno == 19 ? 
-        res.status(406).json(err) : 
-        res.status(500).json(err)
-    }
-})
-
-router.post( '/login', async (req,res) =>{
-
-    const email = req.body.email
-    const password = req.body.password
-
-    const query = `
-        SELECT id, password FROM user
-        WHERE email = ?
-    `
-
-    try {
-        
-        const db = await connection()
-        const result = await db.get( query, [email] )
-
-        if (result){
-
-            if ( await bcrypt.compare( password, result.password ) )
-                res.status(200).json({id: result.id})
-            else
-                res.status( 406 ).json({ err: "password err" })
-
-        }
-        else
-            res.status( 404 ).json({ err: "email err" })
-
-    } catch (err) {
-        console.log(err);
-        res.status(500).json(err)
-    }
-
-} )
+router.use( authMidleware )
 
 router.post( '/addFriend', async (req, res) =>{
 
-    const userID = + req.body.userID
+    const userID = + req.userID
     const newFriendID = + req.body.newFriendID
 
     const querySelect = `
@@ -85,8 +25,8 @@ router.post( '/addFriend', async (req, res) =>{
         //ver se já são amigos
         let result = await db.get( querySelect, {':userID':userID, ':newFriendID':newFriendID} )
         //retornar se já forem amigos, adiocionar se não
-        result ?
-        res.status(200).json({ "message": "These users are already friends" }) :
+        if (result)
+            return res.status(200).json({ "message": "These users are already friends" })
         await db.run( queryInsert, [userID, newFriendID] )
         res.status(201).json({ "message": "New friend added" })
 
@@ -100,7 +40,7 @@ router.post( '/addFriend', async (req, res) =>{
 router.post( '/newMessage', async (req,res) =>{
 
     const text = req.body.text
-    const idSender = + req.body.idSender
+    const idSender = + req.userID
     const idReceiver = + req.body.idReceiver
     
     const query = `
@@ -123,7 +63,7 @@ router.post( '/newMessage', async (req,res) =>{
 
 router.post( '/updateData', async (req,res) =>{
 
-    const id = req.body.id
+    const id = req.userID
     const newName = req.body.name
     const newTel = req.body.tel
 
@@ -148,9 +88,9 @@ router.post( '/updateData', async (req,res) =>{
 
 })
 
-router.get( '/allFriends/:id', async (req,res) =>{
+router.get( '/allFriends', async (req,res) =>{
 
-    const id = req.params.id
+    const id = req.userID
 
     const query = `
         SELECT u.id, u.name FROM user u, friend f
@@ -173,7 +113,7 @@ router.get( '/allFriends/:id', async (req,res) =>{
 
 router.get( '/allChats/:id', async (req, res) =>{
 
-    const id = req.params.id
+    const id = req.userID
 
     const query = `
 
@@ -214,9 +154,9 @@ router.get( '/allChats/:id', async (req, res) =>{
 
 })
 
-router.get( '/allMessages/:yID/:fID', async (req,res) =>{
+router.get( '/allMessages/:fID', async (req,res) =>{
 
-    const yID = req.params.yID
+    const yID = req.userID
     const fID = req.params.fID
 
     const query = `
@@ -302,6 +242,50 @@ router.get( '/searchUser/:content/:type', async (req,res)=> {
         console.log(err);
         res.status(500).json(err)
     }
+
+})
+
+router.get( '/profile/:id', async ( req, res ) => {
+
+    const id = + req.params.id
+    const yID = + req.userID
+
+    const query = `
+        SELECT id, name, tel, email FROM user
+        WHERE id = ?;
+    `
+    const queryFriend = `
+        SELECT * FROM friend f
+        WHERE (f.id_f1 = :yID AND f.id_f2 = :fID) OR
+              (f.id_f2 = :yID AND f.id_f1 = :fID);
+    `
+
+    try {
+        
+        const db = await connection()
+        const result = await db.get( query, [id] )
+
+        if (!result)
+            return res.status(404).json({"error":"id not found"})
+
+
+        const isYourFriend = await db.get( queryFriend, { ":yID": yID, ":fID": id } ) != undefined
+
+        res.status(200).json({
+            name: result.name,
+            id,
+            yourID: yID,
+            tel: result.tel,
+            email: result.email,
+            isYourFriend
+        })
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).json(err)
+    }
+
+    
 
 })
 
