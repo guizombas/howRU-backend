@@ -95,7 +95,8 @@ router.get( '/allFriends', async (req,res) =>{
     const query = `
         SELECT u.id, u.name FROM user u, friend f
         WHERE   (f.id_f1 = :id AND f.id_f2 = u.id) OR
-                (f.id_f2 = :id AND f.id_f1 = u.id);
+                (f.id_f2 = :id AND f.id_f1 = u.id)
+        ORDER BY (name);
     `
 
     try {
