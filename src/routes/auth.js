@@ -90,4 +90,19 @@ router.post( '/login', async (req,res) =>{
 
 } )
 
+router.get( '/auth', async (req, res) => {
+
+    const token = req.headers.authorization
+
+    jwt.verify(token, process.env.SECRET, ( err, decoded )=>{
+
+        if (err)
+            return res.status(203).json(err)
+        
+        return res.status(200).json(decoded)
+
+    })
+
+} )
+
 export default router

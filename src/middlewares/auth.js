@@ -3,9 +3,12 @@ import dotenv from 'dotenv'
 
 dotenv.config()
 
-const authMidleware = ( req, res, next ) =>{
+const authMidleware = async ( req, res, next ) =>{
  
     const token = req.headers.authorization
+
+    if (!token)
+        return res.status(400).send("No token provided")
 
     jwt.verify(token, process.env.SECRET, ( err, decoded )=>{
 

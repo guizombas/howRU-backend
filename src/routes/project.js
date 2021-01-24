@@ -111,7 +111,7 @@ router.get( '/allFriends', async (req,res) =>{
 
 })
 
-router.get( '/allChats/:id', async (req, res) =>{
+router.get( '/allChats', async (req, res) =>{
 
     const id = req.userID
 
