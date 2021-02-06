@@ -160,31 +160,42 @@ router.get( '/allMessages/:fID', async (req,res) =>{
     const yID = req.userID
     const fID = req.params.fID
 
-    const query = `
+    if (yID == fID)
+        return res.status(404).send('thats you!')
+
+    const messagesQuery = `
         SELECT m.id, m.id_sender, m.texto FROM message m
         WHERE   (m.id_sender = :yID AND m.id_receiver = :fID) OR
                 (m.id_receiver = :yID AND m.id_sender = :fID)
         ORDER BY (m.send_time) DESC;
     `
+    const friendQuery = `
+        SELECT name FROM user
+        WHERE id = ?
+    `
 
     try {
         
         const db = await connection()
-        let results = await db.all( query, { ':yID':yID, ':fID': fID } )
 
-        if (results.length > 0){
-            res.status(200).json(
-                results.map( (result)=>{
-                    return {
-                        id: result.id,
-                        text: result.texto,
-                        sender: yID == result.id_sender ? "you" : "friend"
-                    }
-                })
-            )
+        let friend = await db.get( friendQuery, [fID] )
+
+        if (!friend){
+            return res.status(404).send('userNotFound')
         }
-        else
-            res.status(200).json(results)
+
+        let messages = await db.all( messagesQuery, { ':yID':yID, ':fID': fID } )
+
+        res.status(200).json([
+            friend.name,
+            messages.map( (message)=>{
+                return {
+                    id: message.id,
+                    text: message.texto,
+                    sender: yID == message.id_sender ? "you" : "friend"
+                }
+            })
+        ])
 
     } catch (err) {
         console.log(err);

@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt'
 import jwt from 'jsonwebtoken'
 import dotenv from 'dotenv'
 import connection from '../database/connection.js'
+import onlineUsers from '../temp/onlineUsers.js'
 
 dotenv.config()
 
@@ -94,7 +95,7 @@ router.get( '/auth', async (req, res) => {
 
     const token = req.headers.authorization
 
-    jwt.verify(token, process.env.SECRET, ( err, decoded )=>{
+    await jwt.verify(token, process.env.SECRET, ( err, decoded )=>{
 
         if (err)
             return res.status(203).json(err)
@@ -104,5 +105,11 @@ router.get( '/auth', async (req, res) => {
     })
 
 } )
+
+router.get('/', (req,res) =>{
+    console.log(onlineUsers);
+    onlineUsers.push('hello')
+    res.send('hello')
+})
 
 export default router
