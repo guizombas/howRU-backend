@@ -1,6 +1,7 @@
 import express from 'express'
 import connection from '../database/connection.js'
 import authMidleware from '../middlewares/auth.js'
+import onlineUsers from '../temp/onlineUsers.js'
 
 const router = express.Router()
 router.use( authMidleware )
@@ -185,9 +186,11 @@ router.get( '/allMessages/:fID', async (req,res) =>{
         }
 
         let messages = await db.all( messagesQuery, { ':yID':yID, ':fID': fID } )
-
+        const friendStats = onlineUsers[fID]
+        const status = !friendStats ? 'offline' : friendStats.typingFor != yID ? 'online' : 'digitando...'
         res.status(200).json([
             friend.name,
+            status,
             messages.map( (message)=>{
                 return {
                     id: message.id,

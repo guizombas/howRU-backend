@@ -18,29 +18,37 @@ const io = new socketIO(server, {
 
 //socket
 io.on( 'connection', (skt)=>{
-    console.log(skt.id + ' conectou');
     const userId = skt.handshake.auth.token
+    console.log(userId + ' conectou');
+    skt.broadcast.emit('friendStatusChange', 'online' , userId)
     onlineUsers[userId] = {
         typingFor: 0,
         socket: skt.id
     }
 
-    skt.on('newMessage', async (texto, friendId)=>{/*
-        await sendMessage(texto, userId, friendId)*/
+    skt.on('newMessage', async (texto, friendId)=>{
+        await sendMessage(texto, userId, friendId)
         const friendStatus = onlineUsers[friendId]
         const newMessage = {
             id: new Date().getTime(),
             text: texto,
             sender: "you"
         }
-        skt.emit('receivedMessage', newMessage)
+        skt.emit('receivedMessage', newMessage, userId, friendId)
         if (friendStatus){
             newMessage.sender = "friend"
-            skt.to(friendStatus.socket).emit('receivedMessage', newMessage)
+            skt.to(friendStatus.socket).emit('receivedMessage', newMessage, userId, friendId)
         }
     })
+    skt.on('changeTypingStatus', (id, typing) =>{
+        onlineUsers[userId].typingFor = typing ? id : 0
+        if (onlineUsers[id])
+            skt.to(onlineUsers[id].socket).emit('friendStatusChange', typing ? 'digitando...' : 'online', userId )
+    })
+
     skt.on( 'disconnect', ()=>{
         onlineUsers[userId] = null
+        skt.broadcast.emit('friendStatusChange', 'offline' , userId)
         console.log(skt.id + ' desconectou');
     })
 })
