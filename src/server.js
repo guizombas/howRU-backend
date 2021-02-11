@@ -38,10 +38,12 @@ io.on( 'connection', (skt)=>{
         if (friendStatus){
             newMessage.sender = "friend"
             skt.to(friendStatus.socket).emit('receivedMessage', newMessage, userId, friendId)
+            skt.to(friendStatus.socket).emit('notificate', userId)
         }
     })
     skt.on('changeTypingStatus', (id, typing) =>{
-        onlineUsers[userId].typingFor = typing ? id : 0
+        if (onlineUsers[userId])
+            onlineUsers[userId].typingFor = typing ? id : 0
         if (onlineUsers[id])
             skt.to(onlineUsers[id].socket).emit('friendStatusChange', typing ? 'digitando...' : 'online', userId )
     })
