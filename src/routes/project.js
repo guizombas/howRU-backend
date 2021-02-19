@@ -1,7 +1,11 @@
 import express from 'express'
+import Crypter from 'cryptr'
+import dotenv from 'dotenv'
 import connection from '../database/connection.js'
 import authMidleware from '../middlewares/auth.js'
 import onlineUsers from '../temp/onlineUsers.js'
+
+dotenv.config()
 
 const router = express.Router()
 router.use( authMidleware )
@@ -33,30 +37,6 @@ router.post( '/addFriend', async (req, res) =>{
 
     } catch (err) {
         console.log(err)
-        res.status(500).json(err)
-    }
-
-})
-
-router.post( '/newMessage', async (req,res) =>{
-
-    const text = req.body.text
-    const idSender = + req.userID
-    const idReceiver = + req.body.idReceiver
-    
-    const query = `
-        INSERT INTO message( texto, id_sender, id_receiver, send_time )
-        VALUES (?, ?, ?, datetime('now') );
-    `
-
-    try {
-
-        const db = await connection()
-        await db.run( query, [text,idSender,idReceiver] )
-        res.status(201).json({"message":"message sent"})
-
-    } catch (err) {
-        console.log(err);
         res.status(500).json(err)
     }
 
@@ -116,6 +96,7 @@ router.get( '/allFriends', async (req,res) =>{
 router.get( '/allChats', async (req, res) =>{
 
     const id = req.userID
+    const crypter = new Crypter(process.env.SECRET)
 
     const query = `
 
@@ -142,7 +123,7 @@ router.get( '/allChats', async (req, res) =>{
             results.map( result =>{
                 return {
                     name: result.name,
-                    lastMessage: result.texto,
+                    lastMessage: crypter.decrypt(result.texto),
                     lastSender: result.id_sender === id ? "you" : "friend" ,
                     friendID: result.id
                 }
@@ -157,6 +138,8 @@ router.get( '/allChats', async (req, res) =>{
 })
 
 router.get( '/allMessages/:fID', async (req,res) =>{
+    
+    const crypter = new Crypter(process.env.SECRET)
 
     const yID = req.userID
     const fID = req.params.fID
@@ -194,7 +177,7 @@ router.get( '/allMessages/:fID', async (req,res) =>{
             messages.map( (message)=>{
                 return {
                     id: message.id,
-                    text: message.texto,
+                    text: crypter.decrypt(message.texto),
                     sender: yID == message.id_sender ? "you" : "friend"
                 }
             })

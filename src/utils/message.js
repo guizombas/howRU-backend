@@ -1,7 +1,14 @@
 import connection from '../database/connection.js'
+import Crypter from 'cryptr'
+import dotenv from 'dotenv'
+
+dotenv.config()
 
 const sendMessage = async (text, idSender, idReceiver) =>{
     
+    const crypter = new Crypter(process.env.SECRET)
+    text = crypter.encrypt( text )
+
     const query = `
         INSERT INTO message( texto, id_sender, id_receiver, send_time )
         VALUES (?, ?, ?, datetime('now') );
