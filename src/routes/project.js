@@ -97,7 +97,6 @@ router.get( '/allChats', async (req, res) =>{
 
     const id = req.userID
     const crypter = new Crypter(process.env.SECRET)
-
     const query = `
 
         SELECT u.id, u.name, m.texto, m.id_sender FROM message m, user u
@@ -137,12 +136,13 @@ router.get( '/allChats', async (req, res) =>{
 
 })
 
-router.get( '/allMessages/:fID', async (req,res) =>{
+router.get( '/allMessages/:fID/:time', async (req,res) =>{
     
     const crypter = new Crypter(process.env.SECRET)
 
     const yID = req.userID
     const fID = req.params.fID
+    const time = req.params.time
 
     if (yID == fID)
         return res.status(404).send('thats you!')
@@ -151,7 +151,8 @@ router.get( '/allMessages/:fID', async (req,res) =>{
         SELECT m.id, m.id_sender, m.texto FROM message m
         WHERE   (m.id_sender = :yID AND m.id_receiver = :fID) OR
                 (m.id_receiver = :yID AND m.id_sender = :fID)
-        ORDER BY (m.send_time) DESC;
+        ORDER BY (m.send_time) DESC
+        LIMIT :begin,6;
     `
     const friendQuery = `
         SELECT name FROM user
@@ -167,13 +168,19 @@ router.get( '/allMessages/:fID', async (req,res) =>{
         if (!friend){
             return res.status(404).send('userNotFound')
         }
+        
+        const messages = await db.all( messagesQuery, { ':yID':yID, ':fID': fID , ':begin': time*5 } )
+        const isfinished = messages.length < 6
+        if (!isfinished)
+            messages.pop()
 
-        let messages = await db.all( messagesQuery, { ':yID':yID, ':fID': fID } )
         const friendStats = onlineUsers[fID]
         const status = !friendStats ? 'offline' : friendStats.typingFor != yID ? 'online' : 'digitando...'
-        res.status(200).json([
+
+        res.status( 200 ).json([
             friend.name,
             status,
+            isfinished,
             messages.map( (message)=>{
                 return {
                     id: message.id,
