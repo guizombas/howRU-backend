@@ -93,9 +93,10 @@ router.get( '/allFriends', async (req,res) =>{
 
 })
 
-router.get( '/allChats', async (req, res) =>{
+router.get( '/allChats/:time', async (req, res) =>{
 
     const id = req.userID
+    const time = req.params.time
     const crypter = new Crypter(process.env.SECRET)
     const query = `
 
@@ -110,15 +111,19 @@ router.get( '/allChats', async (req, res) =>{
         )
         GROUP BY (u.id)
         HAVING m.send_time = MAX(m.send_time)
-        ORDER BY (send_time) DESC;
+        ORDER BY (send_time) DESC
+        LIMIT :begin ,4;
 
     `
 
     try {
         const db = await connection()
-        const results = await db.all( query, {":id":id} )
+        const results = await db.all( query, { ":id": id, ":begin": time*3 } )
+        const isfinished = results.length < 4
+        if (!isfinished)
+            results.pop()
 
-        res.status(200).json(
+        res.status(200).json([
             results.map( result =>{
                 return {
                     name: result.name,
@@ -126,7 +131,10 @@ router.get( '/allChats', async (req, res) =>{
                     lastSender: result.id_sender === id ? "you" : "friend" ,
                     friendID: result.id
                 }
-            })
+            }),
+            isfinished
+        ]
+            
         )
         
     } catch (err) {
