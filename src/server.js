@@ -11,7 +11,7 @@ const app = express()
 const server = http.createServer(app)
 const io = new socketIO(server, {
     cors:{
-        origin: ["http://192.168.0.108:3000", "http://localhost:3000"],
+        origin: ["http://192.168.0.108:3000", "http://localhost:3000", "https://how-ru.herokuapp.com/"],
         methods: ["GET", "POST"]
     }
 })
@@ -26,7 +26,7 @@ app.use( express.urlencoded({extended: true}) )
 app.use( authRoutes )
 app.use( projectRoutes )
 
-const port = 3300;
+const port = process.env.PORT || 3300;
 server.listen( port, () =>{
     console.log("\n--> Servidor ativo na porta " + port + " <--")
-} )
+})
