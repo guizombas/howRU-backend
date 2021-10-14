@@ -11,8 +11,8 @@ const app = express()
 const server = http.createServer(app)
 const io = new socketIO(server, {
     cors:{
-        origin: ["http://192.168.0.108:3000", "http://localhost:3000", "https://how-ru.herokuapp.com/", "http://how-ru.herokuapp.com/"],
-        methods: ["GET", "POST"]
+        origin: "*",
+        methods: "*"
     }
 })
 
